@@ -130,6 +130,15 @@ class Game {
         window.addEventListener('resize', () => {
             this.renderer.setSize(window.innerWidth, window.innerHeight);
         });
+        
+        // Initialize key states
+        this.keys = {
+            left: false,
+            right: false,
+            forward: false,
+            backward: false,
+            jump: false
+        };
     }
     
     /**
@@ -144,13 +153,21 @@ class Game {
             case 'ArrowRight':
                 this.keys.right = true;
                 break;
+            case 'ArrowUp':
+                // Forward movement
+                this.keys.forward = true;
+                break;
+            case 'ArrowDown':
+                // Backward movement
+                this.keys.backward = true;
+                break;
             case ' ':
                 this.keys.jump = true;
                 break;
             case 'Backspace':
-                if (this.gameOver || this.levelComplete) {
-                    this.restart();
-                }
+                // Allow restart at any time, not just on game over
+                event.preventDefault(); // Prevent browser back navigation
+                this.restart();
                 break;
         }
     }
@@ -166,6 +183,12 @@ class Game {
                 break;
             case 'ArrowRight':
                 this.keys.right = false;
+                break;
+            case 'ArrowUp':
+                this.keys.forward = false;
+                break;
+            case 'ArrowDown':
+                this.keys.backward = false;
                 break;
             case ' ':
                 this.keys.jump = false;
@@ -215,48 +238,55 @@ class Game {
         // Skip update if game over or level complete
         if (this.gameOver || this.levelComplete) return;
         
+        // Calculate time since game start
+        const timeSinceStart = currentTime - window.gameStartTime;
+        
         // Update player
         this.player.update(
             deltaTime,
             this.keys.left,
             this.keys.right,
-            this.keys.jump
+            this.keys.jump,
+            this.keys.forward,
+            this.keys.backward
         );
         
         // Update camera
         this.camera.update();
         
-        // Update traps (only after game has been running for a few seconds)
-        if (currentTime - this.lastTime > 5000) {
+        // Update traps (only after game has been running for a while)
+        if (timeSinceStart > 10000) { // 10 seconds grace period
             this.doors.updateTraps(currentTime);
         }
         
-        // Check door collisions
-        const collisionResult = this.doors.checkCollisions(this.player.mesh);
-        
-        if (collisionResult.teleported) {
-            // Player teleported
-            this.ui.updateScore(50);
-        }
-        
-        if (collisionResult.jumped) {
-            // Player hit jumper door
-            this.player.applyForce(collisionResult.jumpDirection);
-            this.ui.updateScore(30);
-        }
-        
-        if (collisionResult.trapped) {
-            // Player hit trap door
-            const livesLeft = this.ui.decreaseLives();
+        // Check door collisions (only after a few seconds)
+        if (timeSinceStart > 3000) {
+            const collisionResult = this.doors.checkCollisions(this.player.mesh);
             
-            // Shake camera for effect
-            this.camera.shake(0.5, 500);
+            if (collisionResult.teleported) {
+                // Player teleported
+                this.ui.updateScore(50);
+            }
             
-            if (livesLeft <= 0) {
-                this.endGame();
-            } else {
-                // Reset player position but keep score
-                this.player.reset(new THREE.Vector3(0, 10, 0));
+            if (collisionResult.jumped) {
+                // Player hit jumper door
+                this.player.applyForce(collisionResult.jumpDirection);
+                this.ui.updateScore(30);
+            }
+            
+            if (collisionResult.trapped) {
+                // Player hit trap door
+                const livesLeft = this.ui.decreaseLives();
+                
+                // Shake camera for effect
+                this.camera.shake(0.5, 500);
+                
+                if (livesLeft <= 0) {
+                    this.endGame();
+                } else {
+                    // Reset player position but keep score
+                    this.player.reset(new THREE.Vector3(0, 15, 0));
+                }
             }
         }
         
@@ -265,15 +295,15 @@ class Game {
             this.completeLevel();
         }
         
-        // Check if player fell off map
-        if (!this.map.isOnMap(this.player.getPosition())) {
+        // Check if player fell off map (only after grace period)
+        if (timeSinceStart > 3000 && !this.map.isOnMap(this.player.getPosition())) {
             const livesLeft = this.ui.decreaseLives();
             
             if (livesLeft <= 0) {
                 this.endGame();
             } else {
                 // Reset player position but keep score
-                this.player.reset(new THREE.Vector3(0, 10, 0));
+                this.player.reset(new THREE.Vector3(0, 15, 0));
             }
         }
         
@@ -313,12 +343,29 @@ class Game {
         this.levelComplete = false;
         this.isRunning = true;
         this.lastTime = Date.now(); // Reset time to prevent immediate trap spawning
+        window.gameStartTime = Date.now(); // Reset global start time
         
         // Reset UI
         this.ui.reset();
         
-        // Reset player
-        this.player.reset(new THREE.Vector3(0, 10, 0));
+        // Reset player with higher position to avoid getting stuck
+        this.player.reset(new THREE.Vector3(0, 15, 0));
+        
+        // Clear any active traps
+        if (this.doors && this.doors.activeTraps) {
+            for (const trap of this.doors.activeTraps) {
+                if (trap.mesh) {
+                    this.scene.remove(trap.mesh);
+                }
+            }
+            this.doors.activeTraps = [];
+            
+            // Reset trap locations
+            for (const location of this.doors.traps) {
+                location.active = false;
+                location.mesh = null;
+            }
+        }
         
         // Hide UI screens
         this.ui.hideScreens();

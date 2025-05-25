@@ -10,14 +10,14 @@ const CONFIG = {
         COLOR: 0x000000,
         TREAD_COLOR: 0x222222,
         TILT_SPEED: 0.03,
-        ROLL_SPEED: 0.08,
+        ROLL_SPEED: 0.05, // Reduced for better control
         JUMP_FORCE: 0.3,
-        MAX_SPEED: 0.5
+        MAX_SPEED: 0.3 // Reduced max speed
     },
     
     // Physics settings
     PHYSICS: {
-        GRAVITY: 0.005, // Reduced gravity
+        GRAVITY: 0.003, // Very reduced gravity
         FRICTION: 0.98,
         RESTITUTION: 0.5,
         TILT_DECAY: 0.95

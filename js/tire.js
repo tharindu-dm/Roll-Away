@@ -70,17 +70,23 @@ class Tire {
      * @param {boolean} isLeftPressed - Left key pressed
      * @param {boolean} isRightPressed - Right key pressed
      * @param {boolean} isJumpPressed - Jump key pressed
+     * @param {boolean} isForwardPressed - Forward key pressed
+     * @param {boolean} isBackwardPressed - Backward key pressed
      */
-    update(deltaTime, isLeftPressed, isRightPressed, isJumpPressed) {
-        // Check if on ground
-        this.onGround = this.mesh.position.y <= CONFIG.TIRE.RADIUS + 0.1;
+    update(deltaTime, isLeftPressed, isRightPressed, isJumpPressed, isForwardPressed, isBackwardPressed) {
+        // Check if on ground - more generous ground detection
+        const groundHeight = CONFIG.TIRE.RADIUS + 0.5;
+        this.onGround = this.mesh.position.y <= groundHeight;
         
-        // Apply gravity
+        // Apply gravity - reduced for better control
         if (!this.onGround) {
             this.velocity.y -= CONFIG.PHYSICS.GRAVITY;
         } else {
-            // Reset vertical velocity when on ground
+            // Reset vertical velocity when on ground and ensure minimum height
             this.velocity.y = Math.max(0, this.velocity.y);
+            if (this.mesh.position.y < groundHeight) {
+                this.mesh.position.y = groundHeight;
+            }
         }
         
         // Handle tilting
@@ -95,6 +101,13 @@ class Tire {
         
         // Clamp tilt to reasonable values
         this.tilt = Utils.clamp(this.tilt, -0.5, 0.5);
+        
+        // Handle forward/backward movement
+        if (isForwardPressed) {
+            this.velocity.z -= CONFIG.TIRE.ROLL_SPEED;
+        } else if (isBackwardPressed) {
+            this.velocity.z += CONFIG.TIRE.ROLL_SPEED;
+        }
         
         // Apply tilt to velocity (causes tire to roll in tilt direction)
         this.velocity.x = this.tilt * CONFIG.TIRE.ROLL_SPEED;
@@ -129,17 +142,56 @@ class Tire {
         // Update rotation based on movement
         if (this.onGround) {
             // Roll the tire based on movement
-            this.mesh.rotation.x += this.velocity.x / CONFIG.TIRE.RADIUS;
+            this.mesh.rotation.x += this.velocity.z / CONFIG.TIRE.RADIUS;
+            this.mesh.rotation.z -= this.velocity.x / CONFIG.TIRE.RADIUS;
         }
         
         // Apply tilt to visual rotation
-        this.mesh.rotation.z = this.tilt;
+        this.mesh.rotation.y = this.tilt;
         
         // Prevent falling below ground
         if (this.mesh.position.y < CONFIG.TIRE.RADIUS) {
             this.mesh.position.y = CONFIG.TIRE.RADIUS;
             this.velocity.y = 0;
             this.onGround = true;
+        }
+        
+        // Prevent getting stuck in borders
+        this.preventBorderStuck();
+    }
+    
+    /**
+     * Prevent the tire from getting stuck in map borders
+     */
+    preventBorderStuck() {
+        const mapWidth = CONFIG.MAP.WIDTH;
+        const mapLength = CONFIG.MAP.LENGTH;
+        const buffer = 2; // Buffer to prevent getting stuck
+        
+        // Check if near map edges and apply a small push away from edge
+        if (Math.abs(this.mesh.position.x) > mapWidth / 2 - buffer) {
+            // Near left/right edge
+            const pushDirection = this.mesh.position.x > 0 ? -1 : 1;
+            this.velocity.x += pushDirection * 0.05;
+            
+            // If really stuck, force position change
+            if (Math.abs(this.mesh.position.x) > mapWidth / 2) {
+                this.mesh.position.x = (mapWidth / 2 - buffer) * (this.mesh.position.x > 0 ? 1 : -1);
+            }
+        }
+        
+        // Check front/back edges
+        if (this.mesh.position.z < -mapLength + buffer || this.mesh.position.z > -buffer) {
+            // Near front/back edge
+            const pushDirection = this.mesh.position.z > -mapLength / 2 ? -1 : 1;
+            this.velocity.z += pushDirection * 0.05;
+            
+            // If really stuck, force position change
+            if (this.mesh.position.z < -mapLength) {
+                this.mesh.position.z = -mapLength + buffer;
+            } else if (this.mesh.position.z > 0) {
+                this.mesh.position.z = -buffer;
+            }
         }
     }
     
@@ -148,11 +200,13 @@ class Tire {
      * @param {THREE.Vector3} position - New position
      */
     reset(position) {
-        this.mesh.position.copy(position);
-        this.velocity.set(0, 0, 0);
-        this.tilt = 0;
-        this.onGround = false;
-        this.mesh.rotation.set(0, 0, 0);
+        if (this.mesh) {
+            this.mesh.position.copy(position);
+            this.mesh.rotation.set(0, 0, 0);
+            this.velocity.set(0, 0, 0);
+            this.tilt = 0;
+            this.onGround = false;
+        }
     }
     
     /**

@@ -49,12 +49,15 @@ class GameMap {
             1
         );
         const edgeMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x333333 
+            color: 0x333333,
+            transparent: true,
+            opacity: 0.8
         });
         
-        // Front edge (start)
+        // Front edge (start) - slightly lower and transparent
         const frontEdge = new THREE.Mesh(edgeGeometry, edgeMaterial);
-        frontEdge.position.set(0, CONFIG.MAP.EDGE_HEIGHT / 2, 0);
+        frontEdge.position.set(0, CONFIG.MAP.EDGE_HEIGHT / 4, 0);
+        frontEdge.scale.set(1, 0.5, 1); // Half height
         this.scene.add(frontEdge);
         
         // Back edge (end)
@@ -266,17 +269,19 @@ class GameMap {
      * @returns {boolean} True if player is on map
      */
     isOnMap(playerPosition) {
-        // Always return true for the first 5 seconds to prevent immediate game over
-        if (Date.now() - window.gameStartTime < 5000) {
+        // Always return true for the first 10 seconds to prevent immediate game over
+        if (Date.now() - window.gameStartTime < 10000) {
             return true;
         }
         
+        // More generous boundaries
+        const buffer = 5; // Buffer zone around map edges
         return (
-            playerPosition.x > -CONFIG.MAP.WIDTH / 2 &&
-            playerPosition.x < CONFIG.MAP.WIDTH / 2 &&
-            playerPosition.z > -CONFIG.MAP.LENGTH &&
-            playerPosition.z < 0 &&
-            playerPosition.y > -30 // Much more forgiving fall distance
+            playerPosition.x > -CONFIG.MAP.WIDTH / 2 - buffer &&
+            playerPosition.x < CONFIG.MAP.WIDTH / 2 + buffer &&
+            playerPosition.z > -CONFIG.MAP.LENGTH - buffer &&
+            playerPosition.z < buffer &&
+            playerPosition.y > -50 // Much more forgiving fall distance
         );
     }
 }

@@ -178,6 +178,11 @@ class Doors {
      * Spawn a random trap door
      */
     spawnRandomTrap() {
+        // Skip if game just started
+        if (Date.now() - window.gameStartTime < 10000) {
+            return;
+        }
+        
         // Find inactive trap locations
         const inactiveTraps = this.traps.filter(trap => !trap.active);
         
@@ -211,7 +216,8 @@ class Doors {
         // Add to active traps
         this.activeTraps.push({
             mesh: door,
-            spawnTime: Date.now()
+            spawnTime: Date.now(),
+            triggered: false // Track if this trap has already triggered
         });
         
         this.scene.add(door);
@@ -229,6 +235,11 @@ class Doors {
             trapped: false,
             jumpDirection: null
         };
+        
+        // Skip collision checks if game just started
+        if (Date.now() - window.gameStartTime < 3000) {
+            return result;
+        }
         
         // Check teleporter collisions
         for (const teleporter of this.teleporters) {
@@ -262,8 +273,12 @@ class Doors {
         // Check trap collisions
         for (const trap of this.activeTraps) {
             if (Utils.checkCollision(player, trap.mesh)) {
-                result.trapped = true;
-                return result;
+                // Prevent multiple collisions with the same trap
+                if (!trap.triggered) {
+                    trap.triggered = true;
+                    result.trapped = true;
+                    return result;
+                }
             }
         }
         
