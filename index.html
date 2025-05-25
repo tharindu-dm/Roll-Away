@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roll-Away Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="hud">
+            <div id="score">Score: <span id="score-value">0</span></div>
+            <div id="lives">Lives: <span id="lives-value">3</span></div>
+        </div>
+        <div id="instructions">
+            <p>Use Left/Right arrows to tilt the tire</p>
+            <p>Space to jump</p>
+            <p>Backspace to restart</p>
+        </div>
+        <div class="game-over" id="game-over">
+            Game Over!<br>
+            <span id="final-score"></span><br>
+            Press Backspace to restart
+        </div>
+        <div class="level-complete" id="level-complete">
+            Level Complete!<br>
+            <span id="completion-score"></span><br>
+            Press Backspace to restart
+        </div>
+    </div>
+    
+    <!-- Import Three.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.js"></script>
+    
+    <!-- Game modules -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/tire.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/doors.js"></script>
+    <script src="js/camera.js"></script>
+    <script src="js/physics.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
