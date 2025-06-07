@@ -3,7 +3,6 @@
 ![Roll-Away Maze](https://img.shields.io/badge/Roll--Away-Maze-yellow)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Three.js](https://img.shields.io/badge/Three.js-r160-green)
-![License](https://img.shields.io/badge/license-MIT-orange)
 
 A challenging 3D browser-based maze game built with Three.js where you navigate a rolling tire through a randomly generated maze with special interactive elements.
 
@@ -97,13 +96,10 @@ The game features three audio tracks:
 - Online leaderboards
 - Level editor
 
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 👨‍💻 Author
 
-Created by [Your Name] - [your.email@example.com]
+Created by TharinduDM - tharindudeepaloka@gmail.com
 
 ---
 
