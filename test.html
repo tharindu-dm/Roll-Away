@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Roll-Away Test</title>
+</head>
+<body>
+    <h1>Roll-Away Test Page</h1>
+    <p>This is a simple test page to verify that files are accessible.</p>
+    <div id="results"></div>
+    
+    <script>
+        const files = [
+            'js/config.js',
+            'js/utils.js',
+            'js/map.js',
+            'js/tire.js',
+            'js/camera.js',
+            'js/physics.js',
+            'js/ui.js',
+            'js/doors.js',
+            'js/game.js'
+        ];
+        
+        const results = document.getElementById('results');
+        
+        files.forEach(file => {
+            const script = document.createElement('script');
+            script.src = file;
+            script.onload = () => {
+                results.innerHTML += `<p style="color:green">✓ ${file} loaded successfully</p>`;
+            };
+            script.onerror = () => {
+                results.innerHTML += `<p style="color:red">✗ ${file} failed to load</p>`;
+            };
+            document.body.appendChild(script);
+        });
+    </script>
+</body>
+</html>

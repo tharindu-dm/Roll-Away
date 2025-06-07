@@ -29,8 +29,14 @@ const Utils = {
      * @returns {boolean} True if objects are colliding
      */
     checkCollision: function(obj1, obj2) {
+        // Create bounding boxes with a small buffer for more reliable collision detection
         const box1 = new THREE.Box3().setFromObject(obj1);
         const box2 = new THREE.Box3().setFromObject(obj2);
+        
+        // Expand the bounding boxes slightly for more reliable collision detection
+        box1.expandByScalar(0.1);
+        box2.expandByScalar(0.1);
+        
         return box1.intersectsBox(box2);
     },
     

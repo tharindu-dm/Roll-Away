@@ -1,50 +1,78 @@
 /**
- * Map class - Handles the game map and terrain
+ * Map class - Handles the game map and maze generation
  */
 class GameMap {
     constructor(scene) {
         this.scene = scene;
         this.mapMesh = null;
         this.goalMesh = null;
-        this.obstacles = [];
+        this.mazeWalls = [];
+        this.mazeSize = 15; // Size of maze (n x n)
+        this.cellSize = 5; // Size of each cell in the maze
+        this.wallHeight = 3; // Height of maze walls
+        this.wallThickness = 0.5; // Thickness of maze walls
+        this.maze = []; // 2D array representing the maze
+        this.midpointMarker = null; // Marker for the midpoint bonus
+        this.midpointReached = false; // Track if midpoint has been reached
+        
+        // Generate and create the maze
+        this.generateMaze();
         this.createMap();
     }
     
     /**
-     * Create the main game map
+     * Create the main game map with maze
      */
     createMap() {
-        // Create main map platform
-        const mapGeometry = new THREE.BoxGeometry(
-            CONFIG.MAP.WIDTH, 
-            1, 
-            CONFIG.MAP.LENGTH
-        );
-        const mapMaterial = new THREE.MeshPhongMaterial({ 
-            color: CONFIG.MAP.BASE_COLOR,
-            flatShading: true
-        });
-        this.mapMesh = new THREE.Mesh(mapGeometry, mapMaterial);
-        this.mapMesh.position.set(0, -0.5, -CONFIG.MAP.LENGTH / 2);
-        this.mapMesh.receiveShadow = true;
-        this.scene.add(this.mapMesh);
-        
-        // Add map edges to prevent falling off sides
-        this.addMapEdges();
-        
-        // Add terrain features
-        this.addTerrainFeatures();
-        
-        // Add goal area
-        this.addGoalArea();
+        try {
+            // Calculate the actual map size based on maze dimensions
+            const mapSize = this.mazeSize * this.cellSize;
+            CONFIG.MAP.WIDTH = mapSize;
+            CONFIG.MAP.LENGTH = mapSize;
+            
+            // Create main map platform
+            const mapGeometry = new THREE.BoxGeometry(
+                mapSize, 
+                1, 
+                mapSize
+            );
+            const mapMaterial = new THREE.MeshPhongMaterial({ 
+                color: CONFIG.MAP.BASE_COLOR,
+                flatShading: true
+            });
+            this.mapMesh = new THREE.Mesh(mapGeometry, mapMaterial);
+            this.mapMesh.position.set(0, -0.5, -mapSize / 2);
+            this.mapMesh.receiveShadow = true;
+            this.scene.add(this.mapMesh);
+            
+            console.log("Map base created successfully");
+            
+            // Add map edges to prevent falling off sides
+            this.addMapEdges();
+            
+            // Create maze walls
+            this.createMazeWalls();
+            
+            // Add goal area at the end of the maze
+            this.addGoalArea();
+            
+            // Add midpoint marker for extra life
+            this.addMidpointMarker();
+            
+            console.log("Map fully created");
+        } catch (error) {
+            console.error("Error creating map:", error);
+        }
     }
     
     /**
      * Add edges to the map to prevent falling off
      */
     addMapEdges() {
+        const mapSize = this.mazeSize * this.cellSize;
+        
         const edgeGeometry = new THREE.BoxGeometry(
-            CONFIG.MAP.WIDTH, 
+            mapSize, 
             CONFIG.MAP.EDGE_HEIGHT, 
             1
         );
@@ -62,195 +90,362 @@ class GameMap {
         
         // Back edge (end)
         const backEdge = new THREE.Mesh(edgeGeometry, edgeMaterial);
-        backEdge.position.set(0, CONFIG.MAP.EDGE_HEIGHT / 2, -CONFIG.MAP.LENGTH);
+        backEdge.position.set(0, CONFIG.MAP.EDGE_HEIGHT / 2, -mapSize);
         this.scene.add(backEdge);
         
         // Left edge
         const leftEdgeGeometry = new THREE.BoxGeometry(
             1, 
             CONFIG.MAP.EDGE_HEIGHT, 
-            CONFIG.MAP.LENGTH
+            mapSize
         );
         const leftEdge = new THREE.Mesh(leftEdgeGeometry, edgeMaterial);
         leftEdge.position.set(
-            -CONFIG.MAP.WIDTH / 2, 
+            -mapSize / 2, 
             CONFIG.MAP.EDGE_HEIGHT / 2, 
-            -CONFIG.MAP.LENGTH / 2
+            -mapSize / 2
         );
         this.scene.add(leftEdge);
         
         // Right edge
         const rightEdge = new THREE.Mesh(leftEdgeGeometry, edgeMaterial);
         rightEdge.position.set(
-            CONFIG.MAP.WIDTH / 2, 
+            mapSize / 2, 
             CONFIG.MAP.EDGE_HEIGHT / 2, 
-            -CONFIG.MAP.LENGTH / 2
+            -mapSize / 2
         );
         this.scene.add(rightEdge);
     }
     
     /**
-     * Add terrain features like hills, ramps, etc.
+     * Generate a random maze using depth-first search algorithm
      */
-    addTerrainFeatures() {
-        // Add some ramps
-        this.addRamp(-15, -30, 10, 15, 2);
-        this.addRamp(15, -60, 10, 15, 3);
-        this.addRamp(0, -100, 20, 20, 4);
+    generateMaze() {
+        // Initialize maze with all walls
+        this.maze = [];
+        for (let i = 0; i < this.mazeSize; i++) {
+            this.maze[i] = [];
+            for (let j = 0; j < this.mazeSize; j++) {
+                this.maze[i][j] = {
+                    visited: false,
+                    walls: {
+                        top: true,
+                        right: true,
+                        bottom: true,
+                        left: true
+                    }
+                };
+            }
+        }
         
-        // Add some platforms at different heights
-        this.addPlatform(-20, -80, 10, 2, 10);
-        this.addPlatform(20, -120, 10, 3, 10);
-        this.addPlatform(-15, -150, 10, 5, 10);
+        // Start at a random cell
+        const startX = Math.floor(Math.random() * this.mazeSize);
+        const startY = Math.floor(Math.random() * this.mazeSize);
         
-        // Add some obstacles
-        this.addObstacle(0, -40, 5, 3, 1);
-        this.addObstacle(-10, -70, 3, 2, 3);
-        this.addObstacle(10, -90, 4, 2, 2);
+        // Use depth-first search to carve paths
+        this.dfsCarve(startX, startY);
+        
+        // Create entrance and exit
+        // Entrance at top row
+        const entranceX = Math.floor(Math.random() * this.mazeSize);
+        this.maze[entranceX][0].walls.top = false;
+        
+        // Exit at bottom row
+        const exitX = Math.floor(Math.random() * this.mazeSize);
+        this.maze[exitX][this.mazeSize - 1].walls.bottom = false;
+        
+        // Add some random openings to make the maze less difficult (about 10% of walls)
+        const totalWalls = this.mazeSize * this.mazeSize * 2; // Approximate number of internal walls
+        const wallsToRemove = Math.floor(totalWalls * 0.1);
+        
+        for (let i = 0; i < wallsToRemove; i++) {
+            const x = Math.floor(Math.random() * this.mazeSize);
+            const y = Math.floor(Math.random() * this.mazeSize);
+            const isHorizontal = Math.random() > 0.5;
+            
+            if (isHorizontal && y < this.mazeSize - 1) {
+                // Remove horizontal wall (bottom of current cell)
+                this.maze[x][y].walls.bottom = false;
+                this.maze[x][y + 1].walls.top = false;
+            } else if (!isHorizontal && x < this.mazeSize - 1) {
+                // Remove vertical wall (right of current cell)
+                this.maze[x][y].walls.right = false;
+                this.maze[x + 1][y].walls.left = false;
+            }
+        }
     }
     
     /**
-     * Add a ramp to the map
-     * @param {number} x - X position
-     * @param {number} z - Z position
-     * @param {number} width - Ramp width
-     * @param {number} depth - Ramp depth
-     * @param {number} height - Ramp height
+     * Depth-first search algorithm to carve maze paths
+     * @param {number} x - Current cell x coordinate
+     * @param {number} y - Current cell y coordinate
      */
-    addRamp(x, z, width, depth, height) {
-        // Create custom geometry for ramp
-        const rampGeometry = new THREE.BufferGeometry();
+    dfsCarve(x, y) {
+        // Mark current cell as visited
+        this.maze[x][y].visited = true;
         
-        // Define vertices for a ramp shape
-        const vertices = new Float32Array([
-            // Front face (triangle)
-            -width/2, 0, depth/2,
-            width/2, 0, depth/2,
-            0, height, 0,
-            
-            // Back face (triangle)
-            width/2, 0, -depth/2,
-            -width/2, 0, -depth/2,
-            0, height, 0,
-            
-            // Left face (triangle)
-            -width/2, 0, -depth/2,
-            -width/2, 0, depth/2,
-            0, height, 0,
-            
-            // Right face (triangle)
-            width/2, 0, depth/2,
-            width/2, 0, -depth/2,
-            0, height, 0,
-            
-            // Bottom face (rectangle)
-            -width/2, 0, -depth/2,
-            width/2, 0, -depth/2,
-            width/2, 0, depth/2,
-            
-            -width/2, 0, -depth/2,
-            width/2, 0, depth/2,
-            -width/2, 0, depth/2
-        ]);
+        // Define possible directions (top, right, bottom, left)
+        const directions = [
+            { dx: 0, dy: -1, wall: 'top', oppositeWall: 'bottom' },
+            { dx: 1, dy: 0, wall: 'right', oppositeWall: 'left' },
+            { dx: 0, dy: 1, wall: 'bottom', oppositeWall: 'top' },
+            { dx: -1, dy: 0, wall: 'left', oppositeWall: 'right' }
+        ];
         
-        // Add vertices to geometry
-        rampGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-        rampGeometry.computeVertexNormals();
+        // Shuffle directions for randomness
+        this.shuffleArray(directions);
         
-        // Create mesh
-        const rampMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x777777,
+        // Try each direction
+        for (const dir of directions) {
+            const newX = x + dir.dx;
+            const newY = y + dir.dy;
+            
+            // Check if the new cell is valid and unvisited
+            if (
+                newX >= 0 && newX < this.mazeSize &&
+                newY >= 0 && newY < this.mazeSize &&
+                !this.maze[newX][newY].visited
+            ) {
+                // Remove walls between current cell and new cell
+                this.maze[x][y].walls[dir.wall] = false;
+                this.maze[newX][newY].walls[dir.oppositeWall] = false;
+                
+                // Recursively visit the new cell
+                this.dfsCarve(newX, newY);
+            }
+        }
+    }
+    
+    /**
+     * Shuffle array in place (Fisher-Yates algorithm)
+     * @param {Array} array - Array to shuffle
+     */
+    shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+    
+    /**
+     * Create maze walls based on the generated maze
+     */
+    createMazeWalls() {
+        const wallMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x444444,
             flatShading: true
         });
-        const ramp = new THREE.Mesh(rampGeometry, rampMaterial);
-        ramp.position.set(x, 0, z);
-        ramp.castShadow = true;
-        ramp.receiveShadow = true;
         
-        this.scene.add(ramp);
+        // Calculate offset to center the maze
+        const mapSize = this.mazeSize * this.cellSize;
+        const offsetX = -mapSize / 2 + this.cellSize / 2;
+        const offsetZ = -this.cellSize / 2;
+        
+        // Create walls for each cell
+        for (let i = 0; i < this.mazeSize; i++) {
+            for (let j = 0; j < this.mazeSize; j++) {
+                const cell = this.maze[i][j];
+                const x = offsetX + i * this.cellSize;
+                const z = offsetZ - j * this.cellSize;
+                
+                // Top wall (north)
+                if (cell.walls.top) {
+                    this.createWall(
+                        x, 
+                        z + this.cellSize / 2, 
+                        this.cellSize, 
+                        this.wallThickness,
+                        wallMaterial
+                    );
+                }
+                
+                // Right wall (east)
+                if (cell.walls.right) {
+                    this.createWall(
+                        x + this.cellSize / 2, 
+                        z, 
+                        this.wallThickness, 
+                        this.cellSize,
+                        wallMaterial
+                    );
+                }
+                
+                // Bottom wall (south) - only if at the edge of the maze
+                if (cell.walls.bottom && j === this.mazeSize - 1) {
+                    this.createWall(
+                        x, 
+                        z - this.cellSize / 2, 
+                        this.cellSize, 
+                        this.wallThickness,
+                        wallMaterial
+                    );
+                }
+                
+                // Left wall (west) - only if at the edge of the maze
+                if (cell.walls.left && i === 0) {
+                    this.createWall(
+                        x - this.cellSize / 2, 
+                        z, 
+                        this.wallThickness, 
+                        this.cellSize,
+                        wallMaterial
+                    );
+                }
+            }
+        }
     }
     
     /**
-     * Add a platform to the map
+     * Create a single wall
      * @param {number} x - X position
      * @param {number} z - Z position
-     * @param {number} width - Platform width
-     * @param {number} height - Platform height
-     * @param {number} depth - Platform depth
+     * @param {number} width - Wall width
+     * @param {number} depth - Wall depth
+     * @param {THREE.Material} material - Wall material
      */
-    addPlatform(x, z, width, height, depth) {
-        const platformGeometry = new THREE.BoxGeometry(width, height, depth);
-        const platformMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x777777 
-        });
-        const platform = new THREE.Mesh(platformGeometry, platformMaterial);
-        platform.position.set(x, height / 2, z);
-        platform.castShadow = true;
-        platform.receiveShadow = true;
+    createWall(x, z, width, depth, material) {
+        const wallGeometry = new THREE.BoxGeometry(width, this.wallHeight, depth);
+        const wall = new THREE.Mesh(wallGeometry, material);
+        wall.position.set(x, this.wallHeight / 2, z);
+        wall.castShadow = true;
+        wall.receiveShadow = true;
         
-        this.scene.add(platform);
+        this.mazeWalls.push(wall);
+        this.scene.add(wall);
     }
     
     /**
-     * Add an obstacle to the map
-     * @param {number} x - X position
-     * @param {number} z - Z position
-     * @param {number} width - Obstacle width
-     * @param {number} height - Obstacle height
-     * @param {number} depth - Obstacle depth
+     * Add midpoint marker for extra life bonus
      */
-    addObstacle(x, z, width, height, depth) {
-        const obstacleGeometry = new THREE.BoxGeometry(width, height, depth);
-        const obstacleMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x444444 
-        });
-        const obstacle = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
-        obstacle.position.set(x, height / 2, z);
-        obstacle.castShadow = true;
-        obstacle.receiveShadow = true;
+    addMidpointMarker() {
+        // Calculate the midpoint of the maze
+        const mapSize = this.mazeSize * this.cellSize;
+        const midX = 0; // Center of the maze
+        const midZ = -mapSize / 2; // Middle of the maze
         
-        this.obstacles.push(obstacle);
-        this.scene.add(obstacle);
+        // Create a distinctive marker
+        const markerGeometry = new THREE.SphereGeometry(1, 16, 16);
+        const markerMaterial = new THREE.MeshPhongMaterial({ 
+            color: CONFIG.GAME.MIDPOINT_COLOR || 0xFFFFFF, // White (from config or default to white)
+            emissive: CONFIG.GAME.MIDPOINT_COLOR || 0xFFFFFF,
+            emissiveIntensity: 0.5
+        });
+        
+        this.midpointMarker = new THREE.Mesh(markerGeometry, markerMaterial);
+        this.midpointMarker.position.set(midX, 1.5, midZ);
+        
+        // Add pulsing animation
+        this.midpointMarker.userData = {
+            originalScale: 1,
+            pulseSpeed: 0.02,
+            pulseDirection: 1
+        };
+        
+        this.scene.add(this.midpointMarker);
     }
     
     /**
-     * Add goal area at the end of the map
+     * Add goal area at the end of the maze
      */
     addGoalArea() {
-        const goalGeometry = new THREE.BoxGeometry(10, 0.2, 10);
+        // Calculate the position of the goal at the bottom of the maze
+        const mapSize = this.mazeSize * this.cellSize;
+        
+        // Find the exit position (where the bottom wall is removed)
+        let exitX = 0;
+        for (let i = 0; i < this.mazeSize; i++) {
+            if (!this.maze[i][this.mazeSize - 1].walls.bottom) {
+                exitX = i;
+                break;
+            }
+        }
+        
+        // Calculate the actual position
+        const offsetX = -mapSize / 2 + this.cellSize / 2;
+        const x = offsetX + exitX * this.cellSize;
+        const z = -mapSize + this.cellSize / 2;
+        
+        // Create goal platform
+        const goalGeometry = new THREE.BoxGeometry(this.cellSize, 0.2, this.cellSize);
         const goalMaterial = new THREE.MeshPhongMaterial({ 
             color: CONFIG.GAME.GOAL_COLOR,
             emissive: CONFIG.GAME.GOAL_COLOR,
             emissiveIntensity: 0.5
         });
         this.goalMesh = new THREE.Mesh(goalGeometry, goalMaterial);
-        this.goalMesh.position.set(0, 0.1, -CONFIG.MAP.LENGTH + 10);
+        this.goalMesh.position.set(x, 0.1, z);
         this.scene.add(this.goalMesh);
         
         // Add goal post markers
-        const postGeometry = new THREE.CylinderGeometry(0.5, 0.5, 5, 8);
+        const postGeometry = new THREE.CylinderGeometry(0.3, 0.3, 3, 8);
         const postMaterial = new THREE.MeshPhongMaterial({ 
             color: CONFIG.GAME.GOAL_COLOR 
         });
         
         const post1 = new THREE.Mesh(postGeometry, postMaterial);
-        post1.position.set(-5, 2.5, -CONFIG.MAP.LENGTH + 10);
+        post1.position.set(x - this.cellSize / 3, 1.5, z);
         this.scene.add(post1);
         
         const post2 = new THREE.Mesh(postGeometry, postMaterial);
-        post2.position.set(5, 2.5, -CONFIG.MAP.LENGTH + 10);
+        post2.position.set(x + this.cellSize / 3, 1.5, z);
         this.scene.add(post2);
         
         // Add banner between posts
-        const bannerGeometry = new THREE.BoxGeometry(12, 1, 0.5);
+        const bannerGeometry = new THREE.BoxGeometry(this.cellSize, 0.5, 0.2);
         const bannerMaterial = new THREE.MeshPhongMaterial({ 
             color: CONFIG.GAME.GOAL_COLOR,
             emissive: CONFIG.GAME.GOAL_COLOR,
             emissiveIntensity: 0.3
         });
         const banner = new THREE.Mesh(bannerGeometry, bannerMaterial);
-        banner.position.set(0, 5, -CONFIG.MAP.LENGTH + 10);
+        banner.position.set(x, 3, z);
         this.scene.add(banner);
+    }
+    
+    /**
+     * Update the midpoint marker animation
+     */
+    updateMidpointMarker() {
+        if (this.midpointMarker && !this.midpointReached) {
+            const userData = this.midpointMarker.userData;
+            
+            // Pulsing animation
+            const scale = this.midpointMarker.scale.x;
+            const newScale = scale + userData.pulseDirection * userData.pulseSpeed;
+            
+            // Reverse direction if reaching limits
+            if (newScale > userData.originalScale * 1.3 || newScale < userData.originalScale * 0.7) {
+                userData.pulseDirection *= -1;
+            }
+            
+            // Apply new scale
+            this.midpointMarker.scale.set(newScale, newScale, newScale);
+        }
+    }
+    
+    /**
+     * Check if player has reached the midpoint
+     * @param {THREE.Vector3} playerPosition - Player position
+     * @returns {boolean} True if player reached midpoint for the first time
+     */
+    checkMidpointReached(playerPosition) {
+        if (this.midpointReached || !this.midpointMarker) return false;
+        
+        // Create a bounding box for the midpoint marker
+        const midpointBox = new THREE.Box3().setFromObject(this.midpointMarker);
+        midpointBox.expandByScalar(1.5); // Make it easier to reach
+        
+        // Check if player is within the midpoint area
+        if (midpointBox.containsPoint(playerPosition)) {
+            this.midpointReached = true;
+            
+            // Hide the marker
+            this.scene.remove(this.midpointMarker);
+            
+            return true;
+        }
+        
+        return false;
     }
     
     /**
@@ -259,8 +454,19 @@ class GameMap {
      * @returns {boolean} True if player reached goal
      */
     checkGoalReached(playerPosition) {
+        // Create a larger bounding box for the goal to make it easier to detect
         const goalBox = new THREE.Box3().setFromObject(this.goalMesh);
-        return goalBox.containsPoint(playerPosition);
+        goalBox.expandByScalar(1.5); // Expand the goal's bounding box for easier detection
+        
+        // Check if player is within the goal area
+        const result = goalBox.containsPoint(playerPosition);
+        
+        // Log for debugging
+        if (result) {
+            console.log("Goal reached!");
+        }
+        
+        return result;
     }
     
     /**
@@ -269,19 +475,56 @@ class GameMap {
      * @returns {boolean} True if player is on map
      */
     isOnMap(playerPosition) {
-        // Always return true for the first 10 seconds to prevent immediate game over
-        if (Date.now() - window.gameStartTime < 10000) {
+        // Always return true for the first 5 seconds to prevent immediate game over
+        if (Date.now() - window.gameStartTime < 5000) {
             return true;
         }
+        
+        const mapSize = this.mazeSize * this.cellSize;
         
         // More generous boundaries
         const buffer = 5; // Buffer zone around map edges
         return (
-            playerPosition.x > -CONFIG.MAP.WIDTH / 2 - buffer &&
-            playerPosition.x < CONFIG.MAP.WIDTH / 2 + buffer &&
-            playerPosition.z > -CONFIG.MAP.LENGTH - buffer &&
+            playerPosition.x > -mapSize / 2 - buffer &&
+            playerPosition.x < mapSize / 2 + buffer &&
+            playerPosition.z > -mapSize - buffer &&
             playerPosition.z < buffer &&
-            playerPosition.y > -50 // Much more forgiving fall distance
+            playerPosition.y > -20 // More forgiving fall distance
         );
+    }
+    
+    /**
+     * Reset the maze for a new game
+     */
+    reset() {
+        // Remove all existing maze walls
+        for (const wall of this.mazeWalls) {
+            this.scene.remove(wall);
+        }
+        this.mazeWalls = [];
+        
+        // Remove goal and midpoint marker
+        if (this.goalMesh) {
+            this.scene.remove(this.goalMesh);
+        }
+        
+        if (this.midpointMarker) {
+            this.scene.remove(this.midpointMarker);
+        }
+        
+        // Reset midpoint reached flag
+        this.midpointReached = false;
+        
+        // Generate a new maze
+        this.generateMaze();
+        
+        // Create new maze walls
+        this.createMazeWalls();
+        
+        // Add new goal area
+        this.addGoalArea();
+        
+        // Add new midpoint marker
+        this.addMidpointMarker();
     }
 }

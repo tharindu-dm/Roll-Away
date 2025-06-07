@@ -3,20 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roll-Away Game</title>
+    <title>Roll-Away Maze Game</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="game-container">
+        <div id="loading-screen">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading game...</div>
+        </div>
+        <div id="start-screen">
+            <h1>Roll-Away Maze</h1>
+            <button id="start-button">Click to Start</button>
+            <p>Use arrow keys to move, P to pause, Backspace to restart</p>
+        </div>
         <div id="hud">
-            <div id="score">Score: <span id="score-value">0</span></div>
+            <!-- Removed Score display -->
             <div id="lives">Lives: <span id="lives-value">3</span></div>
+            <!-- Timer will be added by UI.js -->
+            <div id="audio-controls">
+                <button id="mute-button" title="Toggle Sound">🔊</button>
+            </div>
         </div>
         <div id="instructions">
-            <p>Use Left/Right arrows to tilt the tire</p>
-            <p>Up/Down arrows to move forward/backward</p>
-            <p>Space to jump</p>
-            <p>Backspace to restart anytime</p>
+            <p>Use Left/Right arrows to roll sideways</p>
+            <p>Up/Down arrows to roll forward/backward</p>
+            <p>P to pause, Backspace to restart</p>
         </div>
         <div class="game-over" id="game-over">
             Game Over!<br>
@@ -24,9 +36,13 @@
             Press Backspace to restart
         </div>
         <div class="level-complete" id="level-complete">
-            Level Complete!<br>
+            Maze Complete!<br>
             <span id="completion-score"></span><br>
-            Press Backspace to restart
+            Press Backspace for a new maze
+        </div>
+        <div class="pause-screen" id="pause-screen" style="display: none;">
+            PAUSED<br>
+            Press P to resume
         </div>
     </div>
     
@@ -34,14 +50,61 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.js"></script>
     
     <!-- Game modules -->
+    <script>
+        // Show loading screen
+        document.getElementById('loading-screen').style.display = 'flex';
+        
+        // Hide loading screen when all scripts are loaded
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                const loadingScreen = document.getElementById('loading-screen');
+                loadingScreen.style.opacity = '0';
+                setTimeout(function() {
+                    loadingScreen.style.display = 'none';
+                    // Show start screen
+                    document.getElementById('start-screen').style.display = 'flex';
+                }, 500);
+            }, 1000);
+        });
+        
+        // Start button click handler
+        document.getElementById('start-button').addEventListener('click', function() {
+            document.getElementById('start-screen').style.display = 'none';
+            // This will trigger the user interaction needed for audio
+        });
+        
+        // Log any errors
+        window.addEventListener('error', function(e) {
+            console.error('Global error:', e.message, 'at', e.filename, ':', e.lineno);
+            
+            // Show error message on screen
+            if (e.message.includes("Script error")) {
+                const errorMsg = document.createElement('div');
+                errorMsg.style.position = 'absolute';
+                errorMsg.style.top = '30%';
+                errorMsg.style.left = '50%';
+                errorMsg.style.transform = 'translate(-50%, -50%)';
+                errorMsg.style.color = 'red';
+                errorMsg.style.fontSize = '18px';
+                errorMsg.style.textAlign = 'center';
+                errorMsg.style.backgroundColor = 'rgba(0,0,0,0.7)';
+                errorMsg.style.padding = '20px';
+                errorMsg.style.borderRadius = '10px';
+                errorMsg.style.zIndex = '1000';
+                errorMsg.innerHTML = 'An error occurred while loading the game.<br>Please check your browser console for details.';
+                document.getElementById('game-container').appendChild(errorMsg);
+            }
+        });
+    </script>
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
-    <script src="js/tire.js"></script>
+    <script src="js/audio.js"></script>
     <script src="js/map.js"></script>
-    <script src="js/doors.js"></script>
+    <script src="js/tire.js"></script>
     <script src="js/camera.js"></script>
     <script src="js/physics.js"></script>
     <script src="js/ui.js"></script>
+    <script src="js/doors.js"></script>
     <script src="js/game.js"></script>
 </body>
 </html>

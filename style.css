@@ -12,6 +12,83 @@ body {
     height: 100vh;
 }
 
+#loading-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    transition: opacity 0.5s ease;
+}
+
+#start-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 900;
+}
+
+#start-screen h1 {
+    color: #ffcc00;
+    font-size: 48px;
+    margin-bottom: 30px;
+    text-shadow: 0 0 10px #ffcc00;
+}
+
+#start-button {
+    background-color: #ffcc00;
+    color: #000;
+    border: none;
+    padding: 15px 30px;
+    font-size: 24px;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-bottom: 30px;
+    transition: all 0.3s ease;
+}
+
+#start-button:hover {
+    background-color: #fff;
+    transform: scale(1.1);
+}
+
+#start-screen p {
+    color: white;
+    font-size: 18px;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    color: white;
+    font-size: 24px;
+}
+
 #hud {
     position: absolute;
     top: 20px;
@@ -25,6 +102,30 @@ body {
     margin-top: 10px;
 }
 
+#timer {
+    margin-top: 10px;
+    color: #ffcc00;
+}
+
+#audio-controls {
+    margin-top: 10px;
+}
+
+#mute-button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 5px;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+#mute-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
 #instructions {
     position: absolute;
     bottom: 20px;
@@ -33,13 +134,16 @@ body {
     color: white;
     text-align: center;
     z-index: 100;
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 10px;
+    border-radius: 5px;
 }
 
 #instructions p {
     margin: 5px 0;
 }
 
-.game-over, .level-complete {
+.game-over, .level-complete, .pause-screen {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -56,4 +160,74 @@ body {
 
 .level-complete {
     color: #ffcc00;
+    animation: glow 2s infinite alternate;
+}
+
+@keyframes glow {
+    from {
+        text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #ffcc00, 0 0 20px #ffcc00;
+    }
+    to {
+        text-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #ffcc00, 0 0 40px #ffcc00;
+    }
+}
+
+.pause-screen {
+    color: #ffffff;
+    font-size: 36px;
+}
+
+.bonus-item {
+    font-size: 24px;
+    margin: 10px 0;
+    color: #ffffff;
+}
+
+.score-notification {
+    position: absolute;
+    top: 60px;
+    left: 20px;
+    color: white;
+    font-size: 18px;
+    z-index: 100;
+}
+
+.score-notification div {
+    margin-bottom: 5px;
+    transition: all 1s;
+    color: #ffcc00;
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(10px); }
+    20% { opacity: 1; transform: translateY(0); }
+    80% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-10px); }
+}
+
+/* UI Confetti styles */
+.ui-confetti {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: #f00;
+    transform: rotate(45deg);
+    animation: confetti-fall 5s linear infinite;
+}
+
+@keyframes confetti-fall {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0.7;
+    }
+}
+
+/* Add rotation animation for confetti */
+@keyframes confetti-rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
